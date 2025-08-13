@@ -10,6 +10,7 @@ from langchain_core.documents import Document
 from sentence_transformers import SentenceTransformer
 from rank_bm25 import BM25Okapi
 import torch
+import spacy
 import numpy as np
 import glob
 
@@ -18,12 +19,17 @@ load_dotenv()
 def get_documents(path: str = "Data") -> list[Document]:
 
     names = glob.glob(f"{path}/*.pdf")
+    nlp = spacy.load("en_core_web_sm")
 
     text = []
     for name in names:
         loader = PyPDFLoader(name)
         for page in loader.lazy_load():
-            text.append(page)
+            splitt = nlp(page.page_content)
+            sentences = [sent.text.strip() for sent in splitt.sents]
+            for txt in sentences:
+                if len(txt) >= 3:
+                    text.append(txt)
 
     return text
 
@@ -61,10 +67,12 @@ def query_RAG():
 
 
 def main():
-    documents = [document.page_content for document in get_documents()]
-    k = 1
+    documents = get_documents()
+
+    k = 3
     LLM_importance_proportion = 0.75
     query = "van Edme Boas"
+
     BM25_scores = get_BM25(documents, query, LLM_importance_proportion)
     similarity_scores = get_Model(documents, query, LLM_importance_proportion)
 
